@@ -1,0 +1,4 @@
+#1 FUSE BIT UNSETTED
+hfuse : 0x99
+lfuse : 0x62 
+efuse : 0xff 
