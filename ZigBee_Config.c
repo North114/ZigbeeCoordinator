@@ -174,7 +174,7 @@ int main()
     _delay_ms(10);
     sei();                     //Enable Gloabal Interrupt
     
-    SetPanId(0x5555);
+    //SetPanId(0x5555);
     _delay_ms(2000);
     ReadPanId();
     
