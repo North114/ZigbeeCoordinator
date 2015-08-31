@@ -10,6 +10,9 @@ Function : Transmit Received Data from USART
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
+#define startByte 0xaa
+#define endByte 0x75
+
 volatile unsigned char rdata;
 volatile unsigned char flag = 0;
 
@@ -63,7 +66,7 @@ void USART1_Init(unsigned int baud)
 /*
 Send Data Through USART0
 */
-inline void UART0_Send_Byte(unsigned char data)
+void UART0_Send_Byte(unsigned char data)
 {
 	/* waitting for a empty USART Data Register */
 	while(!(UCSR0A&(1<<UDRE0))) ;
@@ -97,12 +100,12 @@ ISR(USART0_RX_vect)//USART Receive Complete Vector
 	//flag = 1;//set receive flag
 	
 	/* waitting for a empty USART Data Register */
-	while(!(UCSR0A&(1<<UDRE0))) ;
-	UDR0 = temp;//USART Data Register
+	//while(!(UCSR0A&(1<<UDRE0))) ;
+	//UDR0 = temp;//USART Data Register
    
 	/* waitting for USART Transmit Complete */
-	while(!(UCSR0A&(1<<TXC0)));
-	UCSR0A |= 1<<TXC0;//set TXC bit manually
+	//while(!(UCSR0A&(1<<TXC0)));
+	//UCSR0A |= 1<<TXC0;//set TXC bit manually
 
 	UCSR0B |= (1<<RXCIE0);//re-enable receiver interrupt(set bit)
 }
@@ -117,12 +120,12 @@ ISR(USART1_RX_vect)//USART Receive Complete Vector
 	//flag = 1;//set receive flag
 
 	/* waitting for a empty USART Data Register */
-	while(!(UCSR1A&(1<<UDRE1))) ;
-	UDR1 = temp;//USART Data Register
+	//while(!(UCSR1A&(1<<UDRE1))) ;
+	//UDR1 = temp;//USART Data Register
    
 	/* waitting for USART Transmit Complete */
-	while(!(UCSR1A&(1<<TXC1)));
-	UCSR1A |= 1<<TXC1;//set TXC bit manually
+	//while(!(UCSR1A&(1<<TXC1)));
+	//UCSR1A |= 1<<TXC1;//set TXC bit manually
 
 	UCSR1B |= (1<<RXCIE1);//re-enable receiver interrupt(set bit)
 }
@@ -175,26 +178,43 @@ int main()
     USART1_Init(38400);//Initialize USART1 with baud rate of 38400
     initIO();
 
-    _delay_ms(10);
+    _delay_ms(1000);
     sei();                     //Enable Gloabal Interrupt
-
-    while(1){
 
     	readButtonSatus();
 
     	checkStatus();
+    //while(1){
+
 	
-		UART0_Send_Byte(0xAA);
+		UART0_Send_Byte(startByte);
 		UART0_Send_Byte(0x05);
-		UART0_Send_Byte(0x0b);
-		UART0_Send_Byte(0xb8);
-		UART0_Send_Byte(0x57);
-		UART0_Send_Byte(0x1c);
 		UART0_Send_Byte(0x01);
-		UART0_Send_Byte(0x75);
+		UART0_Send_Byte(0x00);
+		UART0_Send_Byte(0x40);
+		UART0_Send_Byte(0x00);
+		UART0_Send_Byte(0xa0);
+		UART0_Send_Byte(endByte);
 		
-	    _delay_ms(10000);
-    }
+		_delay_ms(500);
+
+		UART0_Send_Byte(startByte);
+		UART0_Send_Byte(0x05);
+		UART0_Send_Byte(0x01);
+		UART0_Send_Byte(0x00);
+		UART0_Send_Byte(0x40);
+		UART0_Send_Byte(0x00);
+		UART0_Send_Byte(0xa0);
+		UART0_Send_Byte(endByte);
+		/*
+		UART0_Send_Byte(0x06);
+		UART0_Send_Byte(0x07);
+		UART0_Send_Byte(0x08);
+		UART0_Send_Byte(0x09);
+		UART0_Send_Byte(0x0A);
+		*/
+	    _delay_ms(1000);
+    //}
 
 
     return 0;

@@ -1016,6 +1016,7 @@ void ReadCommandFromBluetooth()
 				/* if the data is cached */
 				if(cache_ttl[i] > 0) {
 					/* Transmit cached data to Bluetooth end */
+					_delay_ms(400);
 					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 					USART0_Send_Byte(i);//_delay_ms(10);
 					cache_temp = cache_current[i] * 100;
@@ -1062,6 +1063,7 @@ void ReadCommandFromBluetooth()
 					//if((recNum_Zigbee == (Zigbee_PackLen - 2))&&(recBuffer_Zigbee[0] == i)&&(RealTimeQuery == 1))
 					//{
 						/* Transmit Received data to Bluetooth end */
+						_delay_ms(400);
 						USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[0]);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[1]);
