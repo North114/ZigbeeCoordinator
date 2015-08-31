@@ -749,6 +749,8 @@ void StoreZigbeeReceivedData()
 	unsigned char ReadTimeStatus;
 	unsigned char WriteEEPROMStatus;
 	unsigned int temp;	
+	/* default make data a current leakage data package */
+	unsigned char DataType = 0x10;
 
 	/* --- Step 2: After transmit ACK data ,read time ,then Archive the data along with ZigbBee data into EEPROM --- */  
 
@@ -766,13 +768,15 @@ void StoreZigbeeReceivedData()
 	readButtonSatus();
 	_delay_ms(1);//if status changes , we just need to delay for a while to it
 	if(checkStatus() > 0) {
+		/* if not a valid current value(this condition "may" be impossible) */
+		if(recBuffer_Zigbee[1] == 0x00 && recBuffer_Zigbee[2] == 0x00)DataType = 0xa0;//voltage monitor data
 		USART0_Send_Byte(StartByte_Zigbee);
 		USART0_Send_Byte(recBuffer_Zigbee[0]);
 		USART0_Send_Byte(recBuffer_Zigbee[1]);
 		USART0_Send_Byte(recBuffer_Zigbee[2]);
 		USART0_Send_Byte(recBuffer_Zigbee[3]);
 		USART0_Send_Byte(recBuffer_Zigbee[4]);
-		USART0_Send_Byte(0x01);//type indicate
+		USART0_Send_Byte(DataType);//type indicate
 		USART0_Send_Byte(EndByte_Zigbee);
 	}
 
@@ -1016,6 +1020,7 @@ void ReadCommandFromBluetooth()
 				/* if the data is cached */
 				if(cache_ttl[i] > 0) {
 					/* Transmit cached data to Bluetooth end */
+					//_delay_ms(1000);
 					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 					USART0_Send_Byte(i);//_delay_ms(10);
 					cache_temp = cache_current[i] * 100;
@@ -1062,6 +1067,7 @@ void ReadCommandFromBluetooth()
 					//if((recNum_Zigbee == (Zigbee_PackLen - 2))&&(recBuffer_Zigbee[0] == i)&&(RealTimeQuery == 1))
 					//{
 						/* Transmit Received data to Bluetooth end */
+						//_delay_ms(1000);
 						USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[0]);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[1]);
@@ -1093,6 +1099,7 @@ void ReadCommandFromBluetooth()
 				}
 			}//end of for loop
 			_delay_ms(500);
+			/* The Last Packet */
 			USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 			USART0_Send_Byte(i);//_delay_ms(10);
 			USART0_Send_Byte(0);
