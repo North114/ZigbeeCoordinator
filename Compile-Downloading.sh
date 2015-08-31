@@ -21,7 +21,8 @@
 #  Zigbee_Coordinator_July_06
 #  Zigbee_Coordinator_July_15
 #  Zigbee_Coordinator_July_24
-FileName=Zigbee_Coordinator_July_24
+#  ZigBee_Config
+FileName=GPRS_Config_NakedSend
 
 echo "Compilling ... ... "
 
