@@ -1126,7 +1126,7 @@ void ReadCommandFromBluetooth()
 	}//end of switch function
 	
 	/* Read Data of Specified Router Immediately */
-	if(recBuffer_Bluetooth[0] > 0x30)
+	if(recBuffer_Bluetooth[0] > 0x30 && recBuffer_Bluetooth[0] - 0x30 <= RouterNum)
 	{
 		RealTimeQuery = 1;	
 		/* if the data is cached */
@@ -1135,14 +1135,15 @@ void ReadCommandFromBluetooth()
 			USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 			USART0_Send_Byte(recBuffer_Bluetooth[0] - 0x30);//_delay_ms(10);
 			cache_temp = cache_current[recBuffer_Bluetooth[0] - 0x30] * 100;
-			USART0_Send_Byte(cache_temp / 256);_delay_ms(50);
+			USART0_Send_Byte(cache_temp / 256);
 			USART0_Send_Byte(cache_temp % 256);//_delay_ms(10);
 			cache_temp = cache_voltage[recBuffer_Bluetooth[0] - 0x30] * 100;
 			USART0_Send_Byte(cache_temp / 256);//_delay_ms(10);
-			USART0_Send_Byte(cache_temp % 256);_delay_ms(50);
+			USART0_Send_Byte(cache_temp % 256);
+			USART0_Send_Byte(0x50);//type indicator
 			USART0_Send_Byte(EndByte_Zigbee);
 			//USART0_Send_Byte(0x22);	//for debug
-			USART0_Send_Byte(0xBB);//End byte
+			
 		}
 		else {
 			/* Query Certain Router */
@@ -1166,33 +1167,44 @@ void ReadCommandFromBluetooth()
 					USART1_Send_Byte(ACK_Zigbee[i]);
 				}
 				//subtract start and end byte of received data
-				if((recNum_Zigbee == (Zigbee_PackLen - 2))&&(recBuffer_Zigbee[0] == (recBuffer_Bluetooth[0] - 0x30))&&(RealTimeQuery == 1))
-				{
+				//if((recNum_Zigbee == (Zigbee_PackLen - 2)) && (recBuffer_Zigbee[0] == (recBuffer_Bluetooth[0] - 0x30)) && (RealTimeQuery == 1))
+				//{
 					/* Transmit Received data to Bluetooth end */
-					USART0_Send_Byte(StartByte_Zigbee);_delay_ms(1);
-					USART0_Send_Byte(recBuffer_Zigbee[0]);_delay_ms(1);
-					USART0_Send_Byte(recBuffer_Zigbee[1]);_delay_ms(1);
-					USART0_Send_Byte(recBuffer_Zigbee[2]);_delay_ms(1);
-					USART0_Send_Byte(recBuffer_Zigbee[3]);_delay_ms(1);
-					USART0_Send_Byte(recBuffer_Zigbee[4]);_delay_ms(1);
+					USART0_Send_Byte(StartByte_Zigbee);
+					USART0_Send_Byte(recBuffer_Zigbee[0]);
+					USART0_Send_Byte(recBuffer_Zigbee[1]);
+					USART0_Send_Byte(recBuffer_Zigbee[2]);
+					USART0_Send_Byte(recBuffer_Zigbee[3]);
+					USART0_Send_Byte(recBuffer_Zigbee[4]);
+					USART0_Send_Byte(0x50);//type indicator
 					USART0_Send_Byte(EndByte_Zigbee);
-					USART0_Send_Byte(0xBB);//End byte
-				}
+				//}
 			}
 			else//If no Ack are Received
 			{
 				/* Transmit Received data to Bluetooth end */
-				USART0_Send_Byte(StartByte_Zigbee);_delay_ms(1);
-				USART0_Send_Byte(recBuffer_Bluetooth[0] - 0x30);_delay_ms(1);
-				USART0_Send_Byte(0);_delay_ms(1);
-				USART0_Send_Byte(0);_delay_ms(1);
-				USART0_Send_Byte(0);_delay_ms(1);
-				USART0_Send_Byte(0);_delay_ms(1);
-				USART0_Send_Byte(EndByte_Zigbee);_delay_ms(1);
-				USART0_Send_Byte(0xBB);//End byte				
+				USART0_Send_Byte(StartByte_Zigbee);
+				USART0_Send_Byte(recBuffer_Bluetooth[0] - 0x30);
+				USART0_Send_Byte(0);
+				USART0_Send_Byte(0);
+				USART0_Send_Byte(0);
+				USART0_Send_Byte(0);
+				USART0_Send_Byte(0x50);//type indicator
+				USART0_Send_Byte(EndByte_Zigbee);
 			}
-			RealTimeQuery = 0;
 		}
+		_delay_ms(500);
+		/* The Last Packet */
+		USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
+		USART0_Send_Byte(recBuffer_Bluetooth[0] - 0x30);//_delay_ms(10);
+		USART0_Send_Byte(0);
+		USART0_Send_Byte(0);//_delay_ms(10);
+		USART0_Send_Byte(0);//_delay_ms(10);
+		USART0_Send_Byte(0);
+		USART0_Send_Byte(0x80);//end indicator
+		USART0_Send_Byte(EndByte_Zigbee);//_delay_ms(10);
+
+		RealTimeQuery = 0;
 	}
 		
 	recBuffer_Bluetooth[0] = 0;//CLear Buffer
