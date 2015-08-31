@@ -67,7 +67,7 @@ date:03-17-2015
 #define StartByte_Zigbee 0xAA
 #define EndByte_Zigbee 0x75 //End byte should less than 128,since it's a character
 #define ZigbeeQueryByte 0xCC //query command byte
-#define RouterNum 5        //Total device number in a PAN
+#define RouterNum 10        //Total device number in a PAN
 
 /* Bluetooth Related Macro */
 #define recBufferSize_Bluetooth 5// larger than PackLen
@@ -755,8 +755,12 @@ void StoreZigbeeReceivedData()
 	/* --- Step 2: After transmit ACK data ,read time ,then Archive the data along with ZigbBee data into EEPROM --- */  
 
 	/* for cache data (big endian)*/
-	if ((recBuffer_Zigbee[0] <= CACHE_SPACE) && (recBuffer_Zigbee[Zigbee_PackLen - 2] == 0))//we only store data when router are not poweroffed
+	if ((recBuffer_Zigbee[0] <= CACHE_SPACE) && (recBuffer_Zigbee[Zigbee_PackLen - 2] == 0x00))
 	{
+		/*	recBuffer_Zigbee[Zigbee_PackLen - 2 = 5] is a type indicator from ZigBee Router
+		**	0x00 means abnormal data , and 0x01 means current leakage data , 0x03 means voltage monitor data
+		**
+		*/
 		cache_ttl[recBuffer_Zigbee[0]] = CACHE_TIME;
 		temp = recBuffer_Zigbee[1] * 256 + recBuffer_Zigbee[2];
 		cache_current[recBuffer_Zigbee[0]] = temp / 100;
@@ -766,19 +770,20 @@ void StoreZigbeeReceivedData()
 
 	/* Check Weather we need to send data to GPRS or BlueTooth*/
 	readButtonSatus();
-	_delay_ms(1);//if status changes , we just need to delay for a while to it
-	if(checkStatus() > 0) {
-		/* if not a valid current value(this condition "may" be impossible) */
-		if(recBuffer_Zigbee[1] == 0x00 && recBuffer_Zigbee[2] == 0x00)DataType = 0xa0;//voltage monitor data
+	_delay_ms(1);//if status changes , we just need to delay for a while to fit it
+	/* Now , we only consider condition of GPRS end device , so we don't check status */
+	//if(checkStatus() > 0) {
+		/* 0x03 means voltage monitor datas */
+		if(recBuffer_Zigbee[Zigbee_PackLen - 2] == 0x03)DataType = 0xa0;//voltage monitor type data
 		USART0_Send_Byte(StartByte_Zigbee);
 		USART0_Send_Byte(recBuffer_Zigbee[0]);
 		USART0_Send_Byte(recBuffer_Zigbee[1]);
 		USART0_Send_Byte(recBuffer_Zigbee[2]);
 		USART0_Send_Byte(recBuffer_Zigbee[3]);
 		USART0_Send_Byte(recBuffer_Zigbee[4]);
-		USART0_Send_Byte(DataType);//type indicate
+		USART0_Send_Byte(DataType);//type indicator
 		USART0_Send_Byte(EndByte_Zigbee);
-	}
+	//}
 
 	/* Load data into W_EEprom_Array */
 	for(i = 0;i < (Zigbee_PackLen - 2);i++)
@@ -1020,11 +1025,8 @@ void ReadCommandFromBluetooth()
 				/* if the data is cached */
 				if(cache_ttl[i] > 0) {
 					/* Transmit cached data to Bluetooth end */
-<<<<<<< HEAD
 					//_delay_ms(1000);
-=======
 					_delay_ms(400);
->>>>>>> 53a3f6534110e02a7ba3d8ffe9c42c345dff781d
 					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 					USART0_Send_Byte(i);//_delay_ms(10);
 					cache_temp = cache_current[i] * 100;
@@ -1071,11 +1073,8 @@ void ReadCommandFromBluetooth()
 					//if((recNum_Zigbee == (Zigbee_PackLen - 2))&&(recBuffer_Zigbee[0] == i)&&(RealTimeQuery == 1))
 					//{
 						/* Transmit Received data to Bluetooth end */
-<<<<<<< HEAD
 						//_delay_ms(1000);
-=======
 						_delay_ms(400);
->>>>>>> 53a3f6534110e02a7ba3d8ffe9c42c345dff781d
 						USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[0]);//_delay_ms(10);
 						USART0_Send_Byte(recBuffer_Zigbee[1]);

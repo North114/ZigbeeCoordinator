@@ -3,3 +3,7 @@ newVersion/
 #hex file and object file
 *.o
 *.hex
+#tags
+tags
+#
+*.out
