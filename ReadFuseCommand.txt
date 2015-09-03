@@ -1,0 +1,10 @@
+读取熔丝高位
+sudo avrdude -p m644p -c usbasp -e -U hfuse:r:hfuse.hex:h
+读取熔丝低位
+sudo avrdude -p m644p -c usbasp -e -U lfuse:r:lfuse.hex:h
+读取熔丝扩展位
+sudo avrdude -p m644p -c usbasp -e -U efuse:r:efuse.hex:h
+
+写熔丝位：
+sudo avrdude -p m644p -c usbasp -e -U hfuse:w:0xde:m
+
