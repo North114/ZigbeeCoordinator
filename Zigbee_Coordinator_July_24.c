@@ -19,43 +19,22 @@ date:01-27-2015
 description:close global interrupt when we store received data into eeprom
 date:03-17-2015
 */
-#define F_CPU 16000000UL  /* 16 MHz CPU clock */
+#ifndef F_CPU
+    #define F_CPU 16000000UL  /* 16 MHz CPU clock */
+#endif
 
 #include <avr/io.h>
+#include <avr/eeprom.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
+/* Self Define Header File  */
+#include "include/init.h"
+#include "include/usart.h"
+#include "include/ds1307.h"
+#include "include/at24c128.h"
+
 //#define DEBUG
-/* DS1307 Related Macro */
-#define DS1307 0x68//define 7-bit slave device address.
-
-/* AT24C128 Related Macro */
-#define AT24C128 0x50//define 7-bit slave device address.
-#define BlockLength 15
-#define EEpromSize 16384//Address Range: 0 ~ 16383
-#define ReservedByteNum 34
-
-
-/* TWI Related Macro */
-/* status codes for master transmiter mode */
-#define  START  0X08//A TWI_Start condition has been transmitted
-#define  ReStart 0x10//A repeated Start condition has been transmitted
-#define  MT_SLA_ACK  0X18//(Master Transmit SLave Address ACK)slave+w has been transmitted;ACK has been received
-#define  MR_SLA_ACK 0x40//Master Receive Slave Address ACK
-#define  MT_DATA_ACK  0X28//(Master Transmit DATA ACK)data byte has been transmitted;ACK has been received
-#define  MR_DATA_ACK 0x50//Master Receive DATA ACK
-#define  MR_DATA_NACK 0X58//Master Receive DATA Not ACK
-
-#define Read 1
-#define Write 0
-
-#define Start() (TWCR=(1<<TWINT)|(1<<TWSTA)|(1<<TWEN))	//²úÉúSTARTÐÅºÅ
-#define Stop() (TWCR=(1<<TWINT)|(1<<TWSTO)|(1<<TWEN))	//²úÉúSTOPÐÅºÅ
-#define Wait() while(!(TWCR&(1<<TWINT)))				//µÈ´ýµ±Ç°²Ù×÷Íê³É
-#define TestACK() (TWSR&0xF8)							//È¡³ö×´Ì¬Âë(TWI Status Register)
-#define SetACK() (TWCR|=(1<<TWEA))						//²úÉúACK
-#define ResetACK() (TWCR=(1<<TWINT)|(1<<TWEN))			//²úÉúNACK
-#define Writebyte(twi_d) {TWDR=(twi_d);TWCR=(1<<TWINT)|(1<<TWEN);}	//·¢ËÍÒ»¸ö×Ö½Ú£¨twi_dÎªÐ´ÈëµÄÊý¾Ý£©
 
 /* Zigbee Related Macro */
 /** StartByte_Zigbee + UserIDByte + LeakageValueByteMSB + LeakageValueByteLSB
@@ -76,7 +55,6 @@ date:03-17-2015
 
 #define CACHE_TIME 250
 #define CACHE_SPACE 100
-#define T0IniVal 55
 /* Function Declaration */
 
 /* DS1307 Relatted Variable Defination */
@@ -172,480 +150,6 @@ int checkStatus() {
     else return 0;
 }
 /*
-Initialize Watch Timer Dog
-*/
-void InitWatchDogTimer()
-{
-	/* Start Timed Sequence */
-	WDTCSR |= (1<<WDCE)|(1<<WDE);//set WDCE to change WDE and prescaler
-	/* Set New Prescaler Time-Out Value */
-	WDTCSR = (1<<WDE)|(1<<WDP3)|(1<<WDP0);	//Time-Out is 8 seconds,system reset mode(@page 61)
-	//Watch Dog Timer in High Fuse Bit(WDTON = 1)
-}
-/*
-Initialize Timer0
-*/
-void Timer0_Init()
-{
-	TCCR0B = (1<<CS02);//PRE-SCALE : 256 (@page 110)
-	TIMSK0 = (1<<TOIE0);//ENABLE TIMER 0 OVERFLOW INTERRUPT(@page 111)
-	
-	TCNT0 = T0IniVal;//Timing/Counter Register
-}
-/*
-Initialize TWI
-*/
-void TWI_Init()
-{
-	/* @page 234 */
-    TWBR=0x20;	//TWI Bit Rate Register
-	TWCR=0x44;	//TWI Control Register
-	TWSR=0;		//TWI Status Register
-}
-/*
-Initialize USART0
-*/
-void USART0_Init(unsigned int baud)
-{
-	UCSR0A = 0x00;//defalut value
-	UCSR0B = 0x00;//USART Control and Status Register B 		    //¿ØÖÆ¼Ä´æÆ÷ÇåÁã
-	UCSR0C = 3<<UCSZ00;//8 bit data
-                                                        //Ñ¡ÔñUCSRC£¬Òì²½Ä£Ê½£¬½ûÖ¹                        
-                                                     //   Ð£Ñé£¬1Î»Í£Ö¹Î»£¬8Î»Êý¾ÝÎ»
-	baud = F_CPU/16/baud - 1	;   //²¨ÌØÂÊ×î´óÎª65K
-	UBRR0L = baud; 					     	  
-	UBRR0H = baud>>8; 		   //ÉèÖÃ²¨ÌØÂÊ
-   
-	UCSR0B = (1<<TXEN0)|(1<<RXEN0)|(1<<RXCIE0); //½ÓÊÕ¡¢·¢ËÍÊ¹ÄÜ£¬½ÓÊÕÖÐ¶ÏÊ¹ÄÜ
-   
-	//SREG = BIT(7);	       //È«¾ÖÖÐ¶Ï¿ª·Å
-	DDRD |= 0x02;	           //ÅäÖÃTX0 pin(PD1) ÎªÊä³ö£¨ºÜÖØÒª£©
-}
-/*
-Initialize USART1
-*/
-void USART1_Init(unsigned int baud)
-{
-	UCSR1A = 0x00;
-	UCSR1B = 0x00;//USART Control and Status Register B 		    //¿ØÖÆ¼Ä´æÆ÷ÇåÁã
-	UCSR1C = 3<<UCSZ10;//8 bit data
-                                                        //Ñ¡ÔñUCSRC£¬Òì²½Ä£Ê½£¬½ûÖ¹                        
-                                                     //   Ð£Ñé£¬1Î»Í£Ö¹Î»£¬8Î»Êý¾ÝÎ»
-	baud = F_CPU/16/baud - 1	;   //²¨ÌØÂÊ×î´óÎª65K
-	UBRR1L = baud; 					     	  
-	UBRR1H = baud>>8; 		   //ÉèÖÃ²¨ÌØÂÊ
-	
-	UCSR1B = (1<<TXEN1)|(1<<RXEN1)|(1<<RXCIE1); //½ÓÊÕ¡¢·¢ËÍÊ¹ÄÜ£¬½ÓÊÕÖÐ¶ÏÊ¹ÄÜ
-   	
-	//SREG = BIT(7);	       //È«¾ÖÖÐ¶Ï¿ª·Å
-	DDRD |= 0x08;	           //ÅäÖÃTX1 pin(PD3) ÎªÊä³ö£¨ºÜÖØÒª£©
-}
-/*
-Read 1 data byte from DS1307
-*/
-unsigned char ReadDS1307(unsigned char DevAddr,unsigned char RegAddr)
-{
-	unsigned char data;
-	
-	DevAddr = (DevAddr<<1)|(Write);//????????????????
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-	   return 0;
-	}
-	/* Write Device Address */
-	Writebyte(DevAddr);//SLA+W
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-	   return 0;
-	}
-	/* Write Register Address 0x00) */
-	Writebyte(RegAddr);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-	   return 0;
-	}
-
-	/* Restart */	
-
-	Start();
-	Wait();
-	if(TestACK()!=ReStart)
-	{
-	   return 0;
-	}
-	Writebyte(DevAddr + 1);//SLW+R
-	Wait();
-	if(TestACK()!=MR_SLA_ACK)//
-	{
-	   return 0;
-	}
-	
-	/* added for certian purpose */
-	//TWCR=(1<<TWINT)|(1<<TWEN);
-	ResetACK();
-	Wait();
-	if(TestACK()!=MR_DATA_NACK)//
-	{
-	   return 0;
-	}
-	/* Receive Data(1 byte only) */
-	data = TWDR;
-	
-	Stop();
-
-	_delay_ms(5);
-	
-	return data;
-
-}
-/*
-Read All Time data
-*/
-unsigned char Read_Current_Time(unsigned char DevAddr,unsigned char *p,unsigned char num)
-{
-	//unsigned char data;
-	unsigned char i = 0;
-	cli();		//Diaable Global Interrupt
-	DevAddr = (DevAddr<<1)|(Write);//????????????????
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-	   return 0;
-	}
-	/* Write Device Address */
-	Writebyte(DevAddr);//SLA+W
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-	   return 0;
-	}
-	/* Write Register Address 0x00) */
-	Writebyte(0);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-	   return 0;
-	}
-
-	/* Restart */	
-
-	Start();
-	Wait();
-	if(TestACK()!=ReStart)
-	{
-	   return 0;
-	}
-	Writebyte(DevAddr + 1);//SLW+R
-	Wait();
-	if(TestACK()!=MR_SLA_ACK)//
-	{
-	   return 0;
-	}
-
-	/* Rstart TWI */
-	//TWCR=(1<<TWINT)|(1<<TWEN);
-	//Wait();
-
-	/* Read MultiByte From DS1307 ???? */
-	for(i = 0;i < (num-1);i++){
-		/* Receive Data(1 byte only) */
-		SetACK();
-		Wait();
-		if(TestACK()!=MR_DATA_ACK)//
-		{
-	   		return 0;
-		}
-		*(p+i) = TWDR;
-		//to do (ACK)????	
-	}
-	ResetACK();
-	Wait();
-	if(TestACK()!=MR_DATA_NACK)//
-	{
-	   	return 0;
-	}
-	*(p+num-1) = TWDR;
-
-	Stop();
-
-	_delay_ms(5);
-	
-	sei();//Enable Global Interrupt
-	return 1;
-
-}
-/*
-Write 1 byte data to EEPROM
-*/
-unsigned char WriteEEPROM(unsigned char DevAddr,unsigned int MemAddr,unsigned char data)
-{
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-	   return 0;
-	}
-	/* Write Device Address */
-	Writebyte((DevAddr<<1)|(Write));
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-	   return 0;
-	}
-	/* Write Memory Address High Byte) */
-	Writebyte(MemAddr>>8);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Memory Address Low Byte) */
-	Writebyte(MemAddr&0xff);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Data to EEPROM */
-	Writebyte(data);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-	   return 0;
-	}
-	Stop();
-	_delay_ms(5);
-	
-	return 1;
-}
-/*
-Write n byte data to EEPROM
-*/
-unsigned char Write_EEPROM_Block(unsigned char DevAddr,unsigned int MemAddr,unsigned char *p,unsigned char num)
-{
-	unsigned char i;	
-	cli();		//Disable Globle Interrupt
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-	   return 0;
-	}
-	/* Write Device Address */
-	Writebyte((DevAddr<<1)|(Write));
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-	   return 0;
-	}
-	/* Write Memory Address High Byte) */
-	Writebyte(MemAddr>>8);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Memory Address Low Byte) */
-	Writebyte(MemAddr&0xff);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Data to EEPROM */
-	for(i = 0;i < num;i++){
-		Writebyte(*(p+i));
-		Wait();
-		if(TestACK()!=MT_DATA_ACK)
-		{
-	   		return 0;
-		}
-	}
-
-	Stop();
-	_delay_ms(5);
-	sei();            //Enable Global Interrupt
-	return 1;
-}
-/*
-Read 1 byte data from EEPROM
-*/
-unsigned char ReadEEPROM(unsigned char DevAddr,unsigned int MemAddr)
-{
-	unsigned char data;
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-		return 0;
-	}	
-	/* Write Device Address */
-	Writebyte((DevAddr<<1)|(Write));//SLA+W
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-		return 0;
-	}
-	/* Write Memory Address High Byte) */
-	Writebyte(MemAddr>>8);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Memory Address Low Byte) */
-	Writebyte(MemAddr&0xff);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Restart */	
-	Start();
-	Wait();
-	if(TestACK()!=ReStart)
-	{
-		return 0;
-	}
-	/* Write Device Address(read format) */
-	Writebyte((DevAddr<<1)|(Read));//SLW+R
-	Wait();
-	if(TestACK()!=MR_SLA_ACK)//
-	{
-		return 0;
-	}
-
-	/* added for certian purpose */
-	TWCR=(1<<TWINT)|(1<<TWEN);
-	Wait();
-
-	/* Receive Data(1 byte only) */
-
-	data = TWDR;
-
-	/* Stop TWI */
-
-	Stop();
-
-	_delay_ms(5);
-	return data;
-}
-/*
-Read n byte data from EEPROM
-*/
-unsigned char Read_EEPROM_Block(unsigned char DevAddr,unsigned int MemAddr,unsigned char *p,unsigned char num)
-{
-	//unsigned char data;
-	unsigned char i = 0;
-	cli();		//Disable Global Interrupt
-	DevAddr = (DevAddr<<1)|(Write);//????????????????
-	/* Start TWI */
-	Start();
-	Wait();
-	if(TestACK()!=START)
-	{
-	   return 0;
-	}
-	/* Write Device Address */
-	Writebyte(DevAddr);//SLA+W
-	Wait();
-	if(TestACK()!=MT_SLA_ACK)
-	{
-	   return 0;
-	}
-	/* Write Memory Address High Byte) */
-	Writebyte(MemAddr>>8);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Write Memory Address Low Byte) */
-	Writebyte(MemAddr&0xff);
-	Wait();
-	if(TestACK()!=MT_DATA_ACK)
-	{
-		return 0;
-	}
-	/* Restart */	
-	Start();
-	Wait();
-	if(TestACK()!=ReStart)
-	{
-	   return 0;
-	}
-	/* Write Device Address(read format) */
-	Writebyte(DevAddr + 1);//SLW+R
-	Wait();
-	if(TestACK()!=MR_SLA_ACK)//
-	{
-	   return 0;
-	}
-	/* Read MultiByte From EEPROM */
-	for(i = 0;i < (num-1);i++){
-		/* Receive Data(1 byte only) */
-		SetACK();
-		Wait();
-		if(TestACK()!=MR_DATA_ACK)//
-		{
-	   		return 0;
-		}
-		*(p+i) = TWDR;
-		//to do (ACK)????	
-	}
-	ResetACK();
-	Wait();
-	if(TestACK()!=MR_DATA_NACK)//
-	{
-	   	return 0;
-	}
-	*(p+num-1) = TWDR;
-
-	Stop();
-
-	_delay_ms(5);
-	
-	sei();		//Enable Global Interrupt
-	return 1;
-
-}
-/*
-Send Data Through USART0
-*/
-inline void USART0_Send_Byte(unsigned char data)
-{
-	/* waitting for a empty USART Data Register */
-	while(!(UCSR0A&(1<<UDRE0))) ;
-	UDR0 = data;//USART Data Register
-   
-	/* waitting for USART Transmit Complete */
-	while(!(UCSR0A&(1<<TXC0)));
-	UCSR0A |= 1<<TXC0;//set TXC bit manually
-}
-/*
-Send Data Through USART1
-*/
-void USART1_Send_Byte(unsigned char data)
-{
-	/* waitting for a empty USART Data Register */
-	while(!(UCSR1A&(1<<UDRE1))) ;
-	UDR1 = data;//USART Data Register
-   
-	/* waitting for USART Transmit Complete */
-	while(!(UCSR1A&(1<<TXC1)));
-	UCSR1A |= 1<<TXC1;//set TXC bit manually
-}
-/*
 USART0 Receive Interrupt Service Routing
 */
 ISR(USART0_RX_vect)//USART Receive Complete Vector
@@ -677,8 +181,8 @@ ISR(USART0_RX_vect)//USART Receive Complete Vector
 /*
 USART1 Receive Interrupt Service Routing
 */
-ISR(USART1_RX_vect)//USART Receive Complete Vector
-{
+ISR(USART1_RX_vect) {//USART Receive Complete Vector
+
 	unsigned char temp;
 
 	UCSR1B &= (~(1<<RXCIE1));//disable receiver interrupt(reset bit)
@@ -726,8 +230,6 @@ ISR(TIMER0_OVF_vect)//Timer0 Overflow Interrupt Vector
 		/* feed dog every 2 second */
 		__asm__ __volatile__ ("wdr");//Watch Dog Timer Reset ??
 		
-		USART0_Send_Byte(PINC);
-
 		//process down operation per 2 seconds,so we can finish all down operation in 10 seconds
 		modTemp = bisecondCount % 100;
 		if(cache_ttl[modTemp] != 0) {
@@ -746,8 +248,7 @@ ISR(TIMER0_OVF_vect)//Timer0 Overflow Interrupt Vector
 /*
 Store Received data into EEPROM
 */
-void StoreZigbeeReceivedData()
-{
+void StoreZigbeeReceivedData() {
 	unsigned char i;
 	unsigned char ReadTimeStatus;
 	unsigned char WriteEEPROMStatus;
@@ -868,8 +369,7 @@ void StoreZigbeeReceivedData()
 /*
 Read Command From Bluetooth
 */
-void ReadCommandFromBluetooth()
-{
+void ReadCommandFromBluetooth() {
 	volatile unsigned char i,j,k;
 	volatile unsigned char count;
 	unsigned char ReadEEPROMStatus,date,month;
@@ -1235,7 +735,7 @@ int main()
     _delay_ms(50);
 
     #ifdef DEBUG
-	USART0_Send_Byte(0x55);//for debug Watch Dog Timer
+	    USART0_Send_Byte(0x55);//for debug Watch Dog Timer
     #endif
 
     while(1)

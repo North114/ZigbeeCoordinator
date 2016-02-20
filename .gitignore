@@ -1,5 +1,3 @@
-#unrelated file
-newVersion/
 #hex file and object file
 *.o
 *.hex
