@@ -9,7 +9,8 @@ MACROS=#-DDEBUG
 ## GPRS_Config_NakedSend.c
 ## Zigbee_Coordinator_July_24.c
 
-SOURCE=Zigbee_Coordinator_July_24.c
+#SOURCE=Zigbee_Coordinator_July_24.c
+SOURCE=ZigbeeCoordinator_gprs.c
 OBJECT=$(SOURCE:.c=.o)
 OUTPUT=output.hex
 
