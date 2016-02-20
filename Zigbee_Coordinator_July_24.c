@@ -67,7 +67,7 @@ date:03-17-2015
 #define StartByte_Zigbee 0xAA
 #define EndByte_Zigbee 0x75 //End byte should less than 128,since it's a character
 #define ZigbeeQueryByte 0xCC //query command byte
-#define RouterNum 10        //Total device number in a PAN
+#define RouterNum 80       //Total device number in a PAN
 
 /* Bluetooth Related Macro */
 #define recBufferSize_Bluetooth 5// larger than PackLen
@@ -130,6 +130,7 @@ volatile struct {
     unsigned bit4:1;
     unsigned bit5:1;
 }bitVar;
+
 /*
 Initialize Button and Led Pins
 */
@@ -724,6 +725,8 @@ ISR(TIMER0_OVF_vect)//Timer0 Overflow Interrupt Vector
 
 		/* feed dog every 2 second */
 		__asm__ __volatile__ ("wdr");//Watch Dog Timer Reset ??
+		
+		USART0_Send_Byte(PINC);
 
 		//process down operation per 2 seconds,so we can finish all down operation in 10 seconds
 		modTemp = bisecondCount % 100;
@@ -750,7 +753,7 @@ void StoreZigbeeReceivedData()
 	unsigned char WriteEEPROMStatus;
 	unsigned int temp;	
 	/* default make data a current leakage data package */
-	unsigned char DataType = 0x10;
+	unsigned char DataType = 0x01;
 
 	/* --- Step 2: After transmit ACK data ,read time ,then Archive the data along with ZigbBee data into EEPROM --- */  
 
@@ -1026,6 +1029,7 @@ void ReadCommandFromBluetooth()
 				if(cache_ttl[i] > 0) {
 					/* Transmit cached data to Bluetooth end */
 					//_delay_ms(1000);
+
 					_delay_ms(400);
 					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 					USART0_Send_Byte(i);//_delay_ms(10);
@@ -1050,12 +1054,12 @@ void ReadCommandFromBluetooth()
 				//_delay_ms(1);
 				USART1_Send_Byte(EndByte_Zigbee);
 				/* Wait for ACK */
-				for(k = 0;k < 60;k++)
+				for(k = 0;k < 150;k++)
 				{
 					if(1 == recFlag_Zigbee) break;
 					else _delay_ms(10);
 				}
-				//_delay_ms(600);//replace by for loop up there
+				//_delay_ms(1000);//replace by for loop up there
 				if(1 == recFlag_Zigbee)
 				{
 					recFlag_Zigbee = 0;
@@ -1213,72 +1217,71 @@ void ReadCommandFromBluetooth()
 int main()
 {
     volatile unsigned char i = 0;
-	volatile unsigned char r_staus;
-	volatile unsigned t;
+    volatile unsigned char r_staus;
+    volatile unsigned t;
 	
-	cli();
+    cli();
 
-	/* Initialization */
-	TWI_Init();
-	USART0_Init(38400);//Initialize USART0 with baud rate of 38400
-	USART1_Init(38400);//Initialize USART1 with baud rate of 38400
-	Timer0_Init();
-	InitWatchDogTimer();
-	initIO();
+    /* Initialization */
+    TWI_Init();
+    USART0_Init(38400);//Initialize USART0 with baud rate of 38400
+    USART1_Init(38400);//Initialize USART1 with baud rate of 38400
+    Timer0_Init();
+    InitWatchDogTimer();
+    initIO();
 	
-	sei();            //Enable Gloabal Interrupt
-	_delay_ms(50);
+    sei();            //Enable Gloabal Interrupt
+    
+    _delay_ms(50);
 
-	#ifdef DEBUG
+    #ifdef DEBUG
 	USART0_Send_Byte(0x55);//for debug Watch Dog Timer
-	#endif
+    #endif
 
-	while(1)
-	{
-		readButtonSatus();
-		t = checkStatus();
-		/* If Valid Data have been Received From Zigbee */
-		if(1 == recFlag_Zigbee)
-		{
-			cli();	//clear global interrupt
-			recFlag_Zigbee = 0;
-			/* --- Step 1: Send ACK_Zigbee to ZigBee router --- */
-			/* then router stop send data to coordinator */
-			ACK_Zigbee[1] = recBuffer_Zigbee[0];//router device id
-			ACK_Zigbee[2] = recBuffer_Zigbee[1];//leak current high byte
-			ACK_Zigbee[3] = recBuffer_Zigbee[2];//leak current low byte
-			for(i = 0;i < Zigbee_AckLen;i++)
-			{
-				/* Send Acknowledgement Packet to Router */
-				USART1_Send_Byte(ACK_Zigbee[i]);
-			}
-			/* Store Received Data to EEPROM */
-			if(recNum_Zigbee == (Zigbee_PackLen - 1))//added 1 byte (07-15-2015)
-			{
-				LEDON();
-				if(RealTimeQuery == 0)StoreZigbeeReceivedData();//Ignore Query Staus
-				LEDOFF();
-				//USART0_Send_Byte(0x35);
-				//USART0_Send_Byte(0x0A);
-			}
+    while(1)
+    {
+	//read switch button status
+	readButtonSatus();
+	t = checkStatus();
+	/* If Valid Data have been Received From Zigbee */
+	if(1 == recFlag_Zigbee){
+	    cli();	//clear global interrupt
+	    recFlag_Zigbee = 0;
+	    /* --- Step 1: Send ACK_Zigbee to ZigBee router --- */
+	    /* then router stop send data to coordinator */
+	    ACK_Zigbee[1] = recBuffer_Zigbee[0];//router device id
+	    ACK_Zigbee[2] = recBuffer_Zigbee[1];//leak current high byte
+	    ACK_Zigbee[3] = recBuffer_Zigbee[2];//leak current low byte
+	    for(i = 0;i < Zigbee_AckLen;i++){
+	    	/* Send Acknowledgement Packet to Router */
+		USART1_Send_Byte(ACK_Zigbee[i]);
+	    }
+	    /* Store Received Data to EEPROM */
+	    if(recNum_Zigbee == (Zigbee_PackLen - 1))//added 1 byte (07-15-2015)
+	    {
+		LEDON();
+		if(RealTimeQuery == 0)StoreZigbeeReceivedData();//Ignore Query Staus
+		LEDOFF();
+		//USART0_Send_Byte(0x35);
+		//USART0_Send_Byte(0x0A);
+	    }
 
-			/* clear receive buffer @ 06_09 */
-			for (i = 0; i < recBufferSize_Zigbee; ++i)
-			{
-				recBuffer_Zigbee[i] = 0;
-			}
-			sei();	//set global interrupt
-	   	}
-		/* If Valid Data have been Received From Bluetooth */
-		if(1 == recFlag_Bluetooth)
-		{
-			recFlag_Bluetooth = 0;
-			//subtract start and end byte of received data
-			if(1 == recNum_Bluetooth)ReadCommandFromBluetooth();	
-	   	}
-	   	_delay_ms(1);
+	    /* clear receive buffer @ 06_09 */
+	    for (i = 0; i < recBufferSize_Zigbee; ++i)
+	    {
+		recBuffer_Zigbee[i] = 0;
+	    }
+	    sei();	//set global interrupt
+	}
+	/* If Valid Data have been Received From Bluetooth */
+	if(1 == recFlag_Bluetooth){
+	    recFlag_Bluetooth = 0;
+	    //subtract start and end byte of received data
+	    if(1 == recNum_Bluetooth)ReadCommandFromBluetooth();	
+	}
+	_delay_ms(1);
 	
 
-	}
-	return 0;
+    }
+    return 0;
 }
