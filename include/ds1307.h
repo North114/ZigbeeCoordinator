@@ -8,6 +8,7 @@
 	
     #define DS1307_H
 	#define DS1307 0x68//define 7-bit slave device address.
+
 	#define SECOND 0x00
     #define MINUTE 0x01
     #define HOUR 0x02

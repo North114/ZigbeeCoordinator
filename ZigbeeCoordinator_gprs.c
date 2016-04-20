@@ -32,6 +32,7 @@ date:03-17-2015
 #include "include/usart.h"
 #include "include/at24c128.h"
 #include "include/ds1307.h"
+#include "include/mytime.h"
 
 /* Coordinator Related Macro */
 //#define DEBUG
@@ -50,13 +51,13 @@ date:03-17-2015
 #define StartByte_Zigbee 0xAA
 #define EndByte_Zigbee 0x75 //End byte should less than 128,since it's a character
 #define ZigbeeQueryByte 0xCC //query command byte
-//#define RouterNum 80       //Total device number in a PAN
+#define MaxRouterNum 50       //Total device number in a PAN
 
 /* Bluetooth Related Macro */
 #define recBufferSize_Bluetooth 10// larger than PackLen
 #define StartByte_Bluetooth 0xBB
 #define EndByte_Bluetooth 0x70 //end byte should less than 128,since it's a character
-#define QUERYRETRYTIME 4
+#define QUERYRETRYTIME 2
 
 #define CACHE_TIME 250
 #define CACHE_SPACE 200
@@ -134,16 +135,8 @@ volatile unsigned char VoltageDownRange = 20;//(200V)down voltage range(-10%)
 volatile unsigned char MonitorVoltageID = 1;//Router that sending Voltage Monitor Data
 volatile unsigned char RetransmitTimeRatio = 50;//Retransmit period Ratio
 
-typedef struct TimeStamp {
-	volatile unsigned Year;// the default value(after CPU power-on) is 0
-	volatile unsigned Month;
-	volatile unsigned Day;
-	volatile unsigned Hour;
-	volatile unsigned Minute;
-	volatile unsigned Second;
-}TimeStamp;
-
-volatile TimeStamp timestamp[50];
+/* TimeStamp to Record Last Package */
+volatile TimeStamp timestamp[MaxRouterNum];
 
 /*
 ** Initialize Button and Led Pins
@@ -313,8 +306,9 @@ void StoreZigbeeReceivedData()
 	unsigned int temp;	
 	/* default make data a current leakage data package */
 	unsigned char DataType = 0x01;
+    TimeStamp currentTime;
 
-	/* --- Step 2: After transmit ACK data ,read time ,then Archive the data along with ZigbBee data into EEPROM --- */  
+   	/* --- Step 2: After transmit ACK data ,read time ,then Archive the data along with ZigbBee data into EEPROM --- */  
 
 	/* for cache data (big endian)*/
 	if ((recBuffer_Zigbee[0] <= CACHE_SPACE) && (recBuffer_Zigbee[Zigbee_PackLen - 2] == 0x00))
@@ -333,6 +327,19 @@ void StoreZigbeeReceivedData()
 
 		cache_voltage[recBuffer_Zigbee[0]] = temp / 100;
 	}
+    
+    /* Check Time Interval */
+    Read_Current_Time(DS1307,CurrentTime,sizeof(CurrentTime));
+    currentTime.Year = CurrentTime[YEAR];
+    currentTime.Month = CurrentTime[MONTH];
+    currentTime.Day = CurrentTime[DATE];
+    currentTime.Hour = CurrentTime[HOUR];
+    currentTime.Minute = CurrentTime[MINUTE];
+    currentTime.Second = CurrentTime[SECOND];
+    /* Interval is less than 300 seconds */
+    if(CompareTimeStamp(timestamp[recBuffer_Zigbee[0]],currentTime) == 0) return;
+    timestamp[recBuffer_Zigbee[0]] = currentTime; // updating time
+
 
 	/* Check Weather we need to send data to GPRS or BlueTooth*/
 	readButtonSatus();
