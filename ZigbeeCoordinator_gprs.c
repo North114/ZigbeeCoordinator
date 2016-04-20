@@ -126,7 +126,7 @@ volatile unsigned char ButtonStatus = 1;//default for GPRS
 
 /* Configurable Parameters */
 /* Coordinator Parameters Default Value */
-volatile unsigned char RouterNum = 30;//Totle Router Number in a zone
+volatile unsigned char RouterNum = 23;//Totle Router Number in a zone
 volatile unsigned char QueryPeriod = 30;//30 * 50 = 1500 ms = 1.5 second(Query Period)
 /* Router Parameter Default Value */
 volatile unsigned char CurrentThreshold = 20;
@@ -294,6 +294,19 @@ ISR(TIMER0_OVF_vect)//Timer0 Overflow Interrupt Vector
 		//TIMSK0 = (0<<TOIE0);//DISABLE TIMER 0 OVERFLOW INTERRUPT(@page 111)
 	}
 	TCNT0 = T0IniVal;//Timing/Counter Register
+}
+/*
+    Reply ACK to Router
+*/
+void ReplyACK(){
+    /* Load Data */
+    ACK_Zigbee[1] = recBuffer_Zigbee[0];//router device id
+    ACK_Zigbee[2] = recBuffer_Zigbee[1];//leak current high byte
+    ACK_Zigbee[3] = recBuffer_Zigbee[2];//leak current low byte
+    /* Transmit Data */
+    for(j = 0;j < Zigbee_AckLen;j++) {	//you can no longer use variable i,so we choose j
+        USART1_Send_Byte(ACK_Zigbee[j]);
+    }
 }
 /*
 Store Received data into EEPROM
@@ -525,7 +538,7 @@ void ReadCommandFromBluetooth() {
 		{
 			RealTimeQuery = 1;			
 			/* Query Each Router */
-			for(i = 1;i <= RouterNum;i++)//Start From 1
+			for(i = 10;i <= RouterNum;i++)//Start From 1
 			{
 				/* if the data is cached */
 				if(cache_ttl[i] > 0) {
@@ -562,66 +575,43 @@ void ReadCommandFromBluetooth() {
                 for(retryTime = 0;retryTime < QUERYRETRYTIME;++retryTime) {
                     /* Send Query Command to Routers */				
                     USART1_Send_Byte(StartByte_Zigbee);
-                    //_delay_ms(1);
                     USART1_Send_Byte(i);
-                    //_delay_ms(1);
                     USART1_Send_Byte(ZigbeeQueryByte);//Command Byte
-                    //_delay_ms(1);
                     USART1_Send_Byte(EndByte_Zigbee);
-                    /* Wait for ACK */
+                    /* Wait for Reply */
                     for(k = 0;k < QueryPeriod;k++) {
-                        if(1 == recFlag_Zigbee) break;
-                        else _delay_ms(50);
+                        if(1 == recFlag_Zigbee) {
+                            if(i == recBuffer_Zigbee[0]) break;
+                            ReplyACK();
+                            recFlag_Zigbee = 0;
+                        } else _delay_ms(50);
                     }
                     //_delay_ms(1000);//replace by for loop up there
                     if(1 == recFlag_Zigbee) {
                         recFlag_Zigbee = 0;
                         /* --- Step 1: Send ACK_Zigbee to ZigBee router --- */
                         /* then router stop send data to coordinator */
-                        ACK_Zigbee[1] = recBuffer_Zigbee[0];//router device id
-                        ACK_Zigbee[2] = recBuffer_Zigbee[1];//leak current high byte
-                        ACK_Zigbee[3] = recBuffer_Zigbee[2];//leak current low byte
-                        for(j = 0;j < Zigbee_AckLen;j++)	//you can no longer use variable i,so we choose j
-                        {
-                            USART1_Send_Byte(ACK_Zigbee[j]);
-                        }
+                        ReplyACK();
                         //subtract start and end byte of received data
-                        
-                        //if((recNum_Zigbee == (Zigbee_PackLen - 2))&&(recBuffer_Zigbee[0] == i)&&(RealTimeQuery == 1))
-                        //{
-                            /* Transmit Received data to Bluetooth end */
-                            //_delay_ms(1000);
-                            USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
-                            USART0_Send_Byte(recBuffer_Zigbee[0]);//_delay_ms(10);
-                            USART0_Send_Byte(recBuffer_Zigbee[1]);
-                            USART0_Send_Byte(recBuffer_Zigbee[2]);//_delay_ms(10);
-                            USART0_Send_Byte(recBuffer_Zigbee[3]);//_delay_ms(10);
-                            USART0_Send_Byte(recBuffer_Zigbee[4]);
-                            if (ButtonStatus == 0x01)
-                            {
-                                USART0_Send_Byte(0x50);//type indicator
-                            } else if(ButtonStatus == 0x00) {
-		                        USART0_Send_Byte(recBuffer_Zigbee[5]);
-                            }
-                            USART0_Send_Byte(COORDINATORID);
-                            USART0_Send_Byte(EndByte_Zigbee);
-                            _delay_ms(400);
-                            /* Break Retransmit For Loop */
-                            break;
-                        //}
+                        USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
+                        USART0_Send_Byte(recBuffer_Zigbee[0]);//_delay_ms(10);
+                        USART0_Send_Byte(recBuffer_Zigbee[1]);
+                        USART0_Send_Byte(recBuffer_Zigbee[2]);//_delay_ms(10);
+                        USART0_Send_Byte(recBuffer_Zigbee[3]);//_delay_ms(10);
+                        USART0_Send_Byte(recBuffer_Zigbee[4]);
+                        if (ButtonStatus == 0x01) {
+                            USART0_Send_Byte(0x50);//type indicator
+                        } else if(ButtonStatus == 0x00) {
+                            USART0_Send_Byte(recBuffer_Zigbee[5]);
+                        }
+                        USART0_Send_Byte(COORDINATORID);
+                        USART0_Send_Byte(EndByte_Zigbee);
+                        _delay_ms(400);
+                        /* Break Retransmit For Loop */
+                        break;
                     }
                     /* Send Default Value at the Last Query Retry */
-                    else if(retryTime == QUERYRETRYTIME - 1)//If no Ack are Received(retry just 1 time!)@version3
-                    {
-                        /* Send Query Command to Routers Again */ 
-                        //USART1_Send_Byte(StartByte_Zigbee
-                        //USART1_Send_Byte(i);
-                        //_delay_ms(5);
-                        //USART1_Send_Byte(0xFF);//Command 
-                        //USART1_Send_Byte(EndByte_Zigbee);
-
-                        /* Transmit Received data to Bluetooth end */
-                        
+                    else if(retryTime == QUERYRETRYTIME - 1) {//If no Ack are Received(retry just 1 time!)@version3
                         #ifdef DEBUG
                             if (ButtonStatus == 0x00) {
                             USART0_Send_Byte(0x88);
@@ -669,9 +659,8 @@ void ReadCommandFromBluetooth() {
 	}//end of switch function
 	
 	/* Read Data of Specified Router Immediately */
-	if(CommandByte > 0x30 && CommandByte - 0x30 <= RouterNum)
-	{
-		RealTimeQuery = 1;
+	if(CommandByte > 0x30 && CommandByte - 0x30 <= RouterNum) {
+	    RealTimeQuery = 1;
 		/* if the data is cached */
 		if(cache_ttl[CommandByte - 0x30] > 0) {
 			/* Transmit cached data to Bluetooth end */
@@ -695,8 +684,7 @@ void ReadCommandFromBluetooth() {
 			USART0_Send_Byte(EndByte_Zigbee);
 			//USART0_Send_Byte(0x22);	//for debug
 			
-		}
-		else {
+        } else {
 			/* Query Certain Router */
 			/* Send Query Command to Routers */				
 			USART1_Send_Byte(StartByte_Zigbee);
@@ -705,22 +693,18 @@ void ReadCommandFromBluetooth() {
 			USART1_Send_Byte(EndByte_Zigbee);
             /* Wait for ACK */
             for(k = 0;k < QueryPeriod;k++) {
-                if(1 == recFlag_Zigbee) break;
-                else _delay_ms(50);
+                if(1 == recFlag_Zigbee) {
+                    if(CommandByte - 0x30 == recBuffer_Zigbee[0]) break;
+                    ReplyACK();
+                    recFlag_Zigbee = 0;
+                } else _delay_ms(50);
             }
             /* Check Receive Buffer */
-			if(1 == recFlag_Zigbee)
-			{
+			if(1 == recFlag_Zigbee) {
 				recFlag_Zigbee = 0;
 				/* --- Step 1: Send ACK_Zigbee to ZigBee router --- */
 				/* then router stop send data to coordinator */
-				ACK_Zigbee[1] = recBuffer_Zigbee[0];//router device id
-				ACK_Zigbee[2] = recBuffer_Zigbee[1];//leak current high byte
-				ACK_Zigbee[3] = recBuffer_Zigbee[2];//leak current low byte
-				for(i = 0;i < Zigbee_AckLen;i++)
-				{
-					USART1_Send_Byte(ACK_Zigbee[i]);
-				}
+                ReplyACK();
 				//subtract start and end byte of received data
 				//if((recNum_Zigbee == (Zigbee_PackLen - 2)) && (recBuffer_Zigbee[0] == (CommandByte - 0x30)) && (RealTimeQuery == 1))
 				//{
@@ -739,12 +723,11 @@ void ReadCommandFromBluetooth() {
                     USART0_Send_Byte(COORDINATORID);
 					USART0_Send_Byte(EndByte_Zigbee);
 				//}
-			}
-			else { //If no Ack are Received
+			} else { //If no Ack are Received
 				/* Transmit Received data to Bluetooth end */
 				#ifdef DEBUG
 				    if (ButtonStatus == 0x00){
-					USART0_Send_Byte(0x88);//_delay_ms(10);
+					    USART0_Send_Byte(0x88);//_delay_ms(10);
 				    }
 				#endif
 				USART0_Send_Byte(StartByte_Zigbee);
@@ -759,7 +742,7 @@ void ReadCommandFromBluetooth() {
                 USART0_Send_Byte(COORDINATORID);
 				USART0_Send_Byte(EndByte_Zigbee);
 			}
-		}
+        }//end of query loop
 		_delay_ms(500);
 		/* The Last Packet */
 		if(0x01 == ButtonStatus) {
@@ -783,14 +766,14 @@ void ReadCommandFromBluetooth() {
 void CheckParameter(){
     /* address 10 is the flag byte , indicate that if we already write on-chip eeprom */
     if(eeprom_read_byte((uint8_t *)10) == 0x55) {
-	/* we already configed parameters , so use these parameters */
-	RouterNum = eeprom_read_byte((uint8_t *)0);
-	QueryPeriod = eeprom_read_byte((uint8_t *)1);
-	CurrentThreshold = eeprom_read_byte((uint8_t *)2);
-	VoltageUpperRange = eeprom_read_byte((uint8_t *)3);
-	VoltageDownRange = eeprom_read_byte((uint8_t *)4);
-	MonitorVoltageID = eeprom_read_byte((uint8_t *)5);
-	RetransmitTimeRatio = eeprom_read_byte((uint8_t *)6);
+        /* we already configed parameters , so use these parameters */
+        RouterNum = eeprom_read_byte((uint8_t *)0);
+        QueryPeriod = eeprom_read_byte((uint8_t *)1);
+        CurrentThreshold = eeprom_read_byte((uint8_t *)2);
+        VoltageUpperRange = eeprom_read_byte((uint8_t *)3);
+        VoltageDownRange = eeprom_read_byte((uint8_t *)4);
+        MonitorVoltageID = eeprom_read_byte((uint8_t *)5);
+        RetransmitTimeRatio = eeprom_read_byte((uint8_t *)6);
     }
 }
 
