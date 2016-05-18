@@ -1,8 +1,12 @@
+#ifndef F_CPU
+    #define F_CPU 16000000/* 16 MHz CPU clock */
+#endif
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-# define F_CPU 16000000/* 16 MHz CPU clock */
+#include "../include/usart.h"
 
 struct {
     unsigned bit4:1;
@@ -30,16 +34,19 @@ int main()
     unsigned temp;
 
     initLED();
+    USART0_Init(38400);
     initButton();
 
     while(1) {
         temp = PINC & 0x30;
+        USART0_Send_Byte(PINC);
         bitVar.bit4 = temp >> 4;
         bitVar.bit5 = temp >> 5;
 
         if(bitVar.bit5 & (~bitVar.bit4)) LEDON();
         else LEDOFF();
         temp = 0x00;
+        _delay_ms(2000);
     }
     return 0;
 }
