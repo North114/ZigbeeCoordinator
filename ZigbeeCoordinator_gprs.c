@@ -193,10 +193,11 @@ int checkStatus() {
     /*  */
     if(bitVar.bit5 == 0) {
         /* Switch to 485 Bus */
-        PORTD = ;
+        //PORTD = ;
     } else {
         /* Switch to GPRS */
     }
+
     if((~bitVar.bit4) && bitVar.bit5)return 1;
     else return 0;
 }
