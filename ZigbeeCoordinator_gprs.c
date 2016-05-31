@@ -172,31 +172,30 @@ void readButtonSatus() {
 */
 int checkStatus() {
 	//if bit changed , then change the pin accordingly
-	/*if(bitVar.bit5 ^ (PORTD & (1 << 5))) {
+	if(bitVar.bit5 ^ (PORTD & (1 << 5))) {
 		if(bitVar.bit5) {
 			PORTD = setBit(PORTD,5); //make output 10(connect to GPRS);
 		}
 	   	else {
 	   		PORTD = clearBit(PORTD,5);
 	   	}
-	}*/
+	}
 
 	//if bit changed , then change the pin accordingly
-   	/*if(bitVar.bit4 ^ (PORTD & (1 << 4))) {
+   	if(bitVar.bit4 ^ (PORTD & (1 << 4))) {
     	if(bitVar.bit4) {
-    		PORTD = setBit(PORTD,4); //make output 10(connect to GPRS);
-    	}
+    		PORTD = setBit(PORTD,4);    	}
     	else {
     		PORTD = clearBit(PORTD,4);
     	}
-    }*/
-    /*  */
-    if(bitVar.bit5 == 0) {
-        /* Switch to 485 Bus */
-        //PORTD = ;
-    } else {
-        /* Switch to GPRS */
     }
+    
+	//if(bitVar.bit5 == 0) {
+    //    /* Switch to 485 Bus */
+    //    //PORTD = ;
+    //} else {
+    //    /* Switch to GPRS */
+    //}
 
     if((~bitVar.bit4) && bitVar.bit5)return 1;
     else return 0;
