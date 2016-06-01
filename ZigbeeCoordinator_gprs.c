@@ -190,6 +190,7 @@ int checkStatus() {
     	}
     }
     
+
 	//if(bitVar.bit5 == 0) {
     //    /* Switch to 485 Bus */
     //    //PORTD = ;
