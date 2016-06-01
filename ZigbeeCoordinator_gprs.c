@@ -32,6 +32,7 @@ date:03-17-2015
 #include "include/usart.h"
 #include "include/at24c128.h"
 #include "include/ds1307.h"
+#include "include/GPRS.h"
 
 /* Coordinator Related Macro */
 //#define DEBUG
@@ -529,7 +530,8 @@ void ReadCommandFromBluetooth() {
 					    }
 					#endif
 					
-					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
+					Send_Data_to_GPRS(i,cache_current[i],cache_voltage[i],0x50,ButtonStatus);
+/* 					USART0_Send_Byte(StartByte_Zigbee);//_delay_ms(10);
 					USART0_Send_Byte(i);//_delay_ms(10);
 					cache_temp = cache_current[i] * 100;
 					USART0_Send_Byte(cache_temp / 256);
@@ -543,7 +545,7 @@ void ReadCommandFromBluetooth() {
 						USART0_Send_Byte(0x06);//type indicator
                     }
 					USART0_Send_Byte(COORDINATORID);//type indicator
-					USART0_Send_Byte(EndByte_Zigbee);
+					USART0_Send_Byte(EndByte_Zigbee); */
 					//USART0_Send_Byte(0x11);	//for debug
 					continue;//skip following code
 				}

@@ -19,7 +19,11 @@ OS_TYPE=$(shell (printf $(UNAME) | tr A-Z a-z))
 
 # Source File Actually
 SourceDir=./include
-HEADERS=$(SourceDir)/ds1307.c $(SourceDir)/usart.c $(SourceDir)/at24c128.c $(SourceDir)/init.c
+HEADERS=$(SourceDir)/ds1307.c \
+$(SourceDir)/usart.c \
+$(SourceDir)/at24c128.c \
+$(SourceDir)/init.c \
+$(SourceDir)/GPRS.c
 
 # Macros
 MACROS=#-DDEBUG
