@@ -68,4 +68,4 @@ else
 endif
 
 clean:
-	rm $(OBJECT) $(OUTPUT)
+	rm -f $(OBJECT) $(OUTPUT)

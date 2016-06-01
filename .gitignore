@@ -2,6 +2,6 @@
 *.o
 *.hex
 #tags
-tags
+tags*
 #
 *.out
