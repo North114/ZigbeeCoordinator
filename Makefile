@@ -28,12 +28,10 @@ $(SourceDir)/GPRS.c
 # Macros
 MACROS=#-DDEBUG
 
-## file name lists
-## GPRS_Config_NakedSend.c
-## Zigbee_Coordinator_July_24.c
-
-# Main Source File
-#SOURCE=Zigbee_Coordinator_July_24.c
+# Main Source File List
+# GPRS_Config_NakedSend.c
+# Zigbee_Coordinator_July_24.c
+# Zigbee_Coordinator_July_24.c
 SOURCE=ZigbeeCoordinator_gprs.c
 
 # Object File (Cooresponding to Main Source File)
@@ -48,15 +46,24 @@ OUTPUT=output.hex
 all:$(OUTPUT)
 
 $(OUTPUT):$(OBJECT)
+	@echo "-------------------------------------------"
+	@echo "Start Coping!"
 	$(CP) $(TFLAGS) $< $@
+	@echo "Finish Coping!"
+	@echo "-------------------------------------------"
 
-$(OBJECT):$(SOURCE)
-	$(CC) $(MACROS) -mmcu=atmega644p $(CFLAGS) -o $@ $< $(HEADERS)
+$(OBJECT):$(SOURCE) $(HEADERS)
+	@echo "-------------------------------------------"
+	@echo "Start Compiling!"
+	$(CC) $(MACROS) -mmcu=atmega644p $(CFLAGS) -o $@ $^
+	@echo "Finish Compiling!"
+	@echo "-------------------------------------------"
 
 #$(SOURCE):$(HEADERS)
 
 ## dl for Download
 dl:
+	@echo "-------------------------------------------"
 	@echo "Start Downloading!"
 ifneq (, $(findstring linux,$(OS_TYPE)))
 	sudo avrdude $(DFLAG) flash:w:$(OUTPUT)
@@ -67,9 +74,9 @@ else ifneq (, $(findstring cygwin, $(OS_TYPE)))
 else
 	@echo "un-defined OS , execuate default operation!"
 	avrdude $(DFLAG) flash:w:$(OUTPUT)
-
-	@echo "Downloading Finished!"
 endif
+	@echo "Downloading Finished!"
+	@echo "-------------------------------------------"
 
 clean:
 	rm -f $(OBJECT) $(OUTPUT)
