@@ -48,7 +48,7 @@ date:03-17-2015
 #define recBufferSize_Bluetooth 10// larger than PackLen
 #define StartByte_Bluetooth 0xBB
 #define EndByte_Bluetooth 0x70 //end byte should less than 128,since it's a character
-#define QUERYRETRYTIME 4
+#define QUERYRETRYTIME 2
 
 #define CACHE_TIME 250
 #define CACHE_SPACE 200
@@ -120,7 +120,7 @@ volatile unsigned char ButtonStatus = 1;//default for GPRS
 
 /* Configurable Parameters */
 /* Coordinator Parameters Default Value */
-volatile unsigned char RouterNum = 30;//Totle Router Number in a zone
+volatile unsigned char RouterNum = 5;//Totle Router Number in a zone
 volatile unsigned char QueryPeriod = 30;//30 * 50 = 1500 ms = 1.5 second(Query Period)
 /* Router Parameter Default Value */
 volatile unsigned char CurrentThreshold = 20;
